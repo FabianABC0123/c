@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trivia de Memoria</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.14/vue.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
+    }
+    .flashcard {
+      background-color: white;
+      border-radius: 1rem;
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+      width: 95%;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 1.5rem;
+      text-align: center;
+      transition: transform 0.6s, opacity 0.6s;
+      transform-style: preserve-3d;
+      min-height: 320px;
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    .flashcard.flipped {
+      transform: rotateY(180deg);
+    }
+
+    .flashcard-front, .flashcard-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem;
+      border-radius: 1rem;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    .flashcard-front {
+      background-color: white;
+    }
+
+    .flashcard-back {
+      background-color: #f3f4f6;
+      transform: rotateY(180deg);
+    }
+
+    .question-text {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      line-height: 1.5;
+    }
+
+    .answer-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .answer-option {
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      background-color: #e5e7eb;
+      color: #1f2937;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.3s ease;
+      word-break: break-word;
+      white-space: normal;
+    }
+
+    .answer-option:hover {
+      background-color: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+
+    .answer-option.correct {
+      background-color: #16a34a;
+      color: white;
+      border-color: #16a34a;
+    }
+
+    .answer-option.incorrect {
+      background-color: #dc2626;
+      color: white;
+      border-color: #dc2626;
+    }
+
+    .feedback {
+      margin-top: 1.25rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #374151;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .feedback.show {
+      opacity: 1;
+    }
+
+    .progress-bar {
+      width: 95%;
+      max-width: 600px;
+      height: 8px;
+      background-color: #e5e7eb;
+      border-radius: 4px;
+      margin: 0 auto 1rem;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background-color: #3b82f6;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      width: 95%;
+      max-width: 600px;
+      margin: 0 auto 1rem;
+      color: #4b5563;
+      font-size: 0.9rem;
+    }
+
+    .button-container {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .btn {
+      padding: 0.8rem 1.5rem;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      border: none;
+    }
+
+    .primary-btn {
+      background-color: #3b82f6;
+      color: white;
+    }
+
+    .primary-btn:hover {
+      background-color: #2563eb;
+    }
+
+    .secondary-btn {
+      background-color: #9ca3af;
+      color: white;
+    }
+
+    .secondary-btn:hover {
+      background-color: #6b7280;
+    }
+
+    .disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .category-selector {
+      width: 95%;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background-color: white;
+      border-radius: 1rem;
+      box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
+    }
+
+    .category-btn {
+      margin: 0.5rem;
+      padding: 0.6rem 1rem;
+      border-radius: 0.5rem;
+      background-color: #e5e7eb;
+      color: #1f2937;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .category-btn:hover, .category-btn.active {
+      background-color: #3b82f6;
+      color: white;
+    }
+
+    .results-container {
+      width: 95%;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background-color: white;
+      border-radius: 1rem;
+      box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
+      text-align: center;
+    }
+
+    .score-circle {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      margin: 0 auto 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: white;
+      background-color: #3b82f6;
+    }
+
+    @media (max-width: 640px) {
+      .question-text {
+        font-size: 1.1rem;
+      }
+
+      .answer-option {
+        font-size: 0.95rem;
+        padding: 0.7rem;
+      }
+
+      .button-container {
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div v-if="appState === 'category'" class="category-selector">
+      <h2 class="text-xl font-bold mb-4">Selecciona una categoría</h2>
+      <div>
+        <button 
+          v-for="(cat, index) in categories" 
+          :key="index" 
+          @click="selectCategory(cat.id)" 
+          class="category-btn"
+          :class="{'active': selectedCategory === cat.id}"
+        >
+          {{ cat.name }}
+        </button>
+      </div>
+      <button 
+        @click="startQuiz" 
+        class="btn primary-btn mt-4" 
+        :disabled="!selectedCategory"
+        :class="{'disabled': !selectedCategory}"
+      >
+        Comenzar Quiz
+      </button>
+    </div>
+
+    <div v-if="appState === 'quiz'">
+      <div class="stats">
+        <div>Pregunta {{ currentQuestionIndex + 1 }} de {{ filteredQuestions.length }}</div>
+        <div>Correctas: {{ correctCount }}</div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" :style="{ width: `${progressPercentage}%` }"></div>
+      </div>
+
+      <div class="flashcard" :class="{ 'flipped': isFlipped }">
+        <div class="flashcard-front">
+          <p class="question-text">{{ currentQuestion.question }}</p>
+          <div class="answer-options">
+            <div
+              v-for="(option, index) in currentQuestion.options"
+              :key="index"
+              class="answer-option"
+              @click="selectAnswer(index)"
+              :class="{
+                'correct': selectedAnswer === index && isCorrect,
+                'incorrect': selectedAnswer === index && !isCorrect
+              }"
+            >
+              {{ option }}
+            </div>
+          </div>
+          <p class="feedback" :class="{ 'show': selectedAnswer !== null }">
+            {{ feedbackText }}
+          </p>
+        </div>
+        <div class="flashcard-back">
+          <p class="question-text">{{ currentQuestion.question }}</p>
+          <p class="feedback show">{{ feedbackText }}</p>
+          <p class="mt-4 text-lg font-semibold">Respuesta Correcta:</p>
+          <p class="text-gray-700">{{ correctOption }}</p>
+          <p class="mt-4 text-sm text-gray-600" v-if="currentQuestion.explanation">
+            {{ currentQuestion.explanation }}
+          </p>
+        </div>
+      </div>
+
+      <div class="button-container">
+        <button 
+          v-if="!isLastQuestion" 
+          class="btn primary-btn" 
+          @click="nextQuestion" 
+          :disabled="selectedAnswer === null" 
+          :class="{ 'disabled': selectedAnswer === null }"
+        >
+          Siguiente Pregunta
+        </button>
+        <button 
+          v-else 
+          class="btn primary-btn" 
+          @click="finishQuiz" 
+          :disabled="selectedAnswer === null" 
+          :class="{ 'disabled': selectedAnswer === null }"
+        >
+          Ver Resultados
+        </button>
+        <button class="btn secondary-btn" @click="resetQuiz">
+          Reiniciar
+        </button>
+      </div>
+    </div>
+
+    <div v-if="appState === 'results'" class="results-container">
+      <h2 class="text-2xl font-bold mb-4">Resultados</h2>
+      <div class="score-circle">
+        {{ Math.round((correctCount / filteredQuestions.length) * 100) }}%
+      </div>
+      <p class="text-lg mb-4">Has respondido correctamente {{ correctCount }} de {{ filteredQuestions.length }} preguntas.</p>
+      <div class="button-container">
+        <button class="btn primary-btn" @click="resetToCategories">
+          Nuevo Quiz
+        </button>
+        <button class="btn secondary-btn" @click="resetQuiz">
+          Repetir Categoría
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const QuestionBank = {
+      "memory": [
+        {
+          id: "mem001",
+          question: "¿Qué acto indecoroso imagina el autor que Dom DeLuise realiza al inicio del capítulo?",
+          options: [
+            "Bailar una danza elaborada",
+            "Lanzar un escupitajo a Albert Einstein",
+            "Comer un sándwich gigante",
+            "Cantar una ópera"
+          ],
+          correctAnswer: 1,
+          explanation: "El autor usa esta imagen vívida como técnica de memorización."
+        },
+        {
+          id: "mem002",
+          question: "¿Qué hazaña de fuerza realizaba Joe Greenstein, también conocido como 'Poderoso Átomo'?",
+          options: [
+            "Levantar un elefante",
+            "Correr un maratón en una hora",
+            "Partir en dos monedas de cuarto de dólar",
+            "Doblar barras de acero con los dientes"
+          ],
+          correctAnswer: 2,
+          explanation: "Joe Greenstein era famoso por partir monedas con sus dedos."
+        },
+        {
+          id: "mem003",
+          question: "¿Qué récord tenía Ben Pridmore en relación con la memorización de números?",
+          options: [
+            "Memorizar el orden de 10,000 dígitos de pi",
+            "Memorizar el orden exacto de 1,528 números aleatorios en una hora",
+            "Memorizar la guía telefónica de Nueva York",
+            "Memorizar 500 rostros en cinco minutos"
+          ],
+          correctAnswer: 1,
+          explanation: "Ben Pridmore tenía un récord impresionante en memorización de números."
+        },
+        {
+          id: "mem004",
+          question: "¿Cuántos días al año, según el autor, pierde una persona normal tratando de compensar las cosas que olvida?",
+          options: [
+            "10 días",
+            "20 días",
+            "30 días",
+            "40 días"
+          ],
+          correctAnswer: 3,
+          explanation: "El autor menciona que perdemos aproximadamente 40 días al año por olvidos."
+        },
+        {
+          id: "mem005",
+          question: "¿En qué lugar se celebró el Campeonato de Memoria de Estados Unidos de 2005?",
+          options: [
+            "En un estadio deportivo",
+            "En la sede de una empresa eléctrica",
+            "En un gimnasio",
+            "En una biblioteca"
+          ],
+          correctAnswer: 1,
+          explanation: "El campeonato se realizó en un lugar poco convencional: la sede de una empresa eléctrica."
+        },
+        {
+          id: "mem006",
+          question: "¿Cuántas pruebas componían el Campeonato de Memoria de Estados Unidos?",
+          options: [
+            "Tres",
+            "Cuatro",
+            "Cinco",
+            "Seis"
+          ],
+          correctAnswer: 2,
+          explanation: "El campeonato constaba de cinco pruebas diferentes."
+        },
+        {
+          id: "mem007",
+          question: "¿Qué título ostentaban dos de los competidores en el Campeonato de Memoria de Estados Unidos, según el texto?",
+          options: [
+            "Maestros del ajedrez",
+            "Grandes maestros de memoria",
+            "Doctores en física",
+            "Campeones de ortografía"
+          ],
+          correctAnswer: 1,
+          explanation: "El título de 'Grandes maestros de memoria' es el más alto reconocimiento en este campo."
+        },
+        {
+          id: "mem008",
+          question: "¿Qué afirmación hace Ed Cooke sobre la memoria fotográfica?",
+          options: [
+            "Que es una habilidad común",
+            "Que es un mito detestable y no existe",
+            "Que él la posee en un grado muy alto",
+            "Que se puede desarrollar con la práctica"
+          ],
+          correctAnswer: 1,
+          explanation: "Ed Cooke es categórico al afirmar que la memoria fotográfica es un mito."
+        },
+        {
+          id: "mem009",
+          question: "¿Qué antiguo arte o técnica se menciona como método para mejorar la memoria?",
+          options: [
+            "El arte de la guerra",
+            "El arte de la cocina",
+            "El palacio de la memoria",
+            "El arte del origami"
+          ],
+          correctAnswer: 2,
+          explanation: "El 'palacio de la memoria' es una técnica antigua mencionada en el texto."
+        },
+        {
+          id: "mem010",
+          question: "¿Quién es Tony Buzan y cuál es su relación con los campeonatos de memoria?",
+          options: [
+            "Un famoso mago que los organiza",
+            "Un educador británico que fundó el Campeonato Mundial de Memoria",
+            "Un neurocientífico que los estudia",
+            "Un atleta que compite en ellos"
+          ],
+          correctAnswer: 1,
+          explanation: "Tony Buzan fue el creador de los mapas mentales y fundador del Campeonato Mundial de Memoria."
+        },
+        {
+          id: "mem011",
+          question: "¿Qué comparación hace Buzan sobre el cerebro y el ejercicio de la memoria?",
+          options: [
+            "Lo compara con una computadora",
+            "Lo compara con un músculo que se fortalece con el ejercicio",
+            "Lo compara con un jardín que necesita ser regado",
+            "Lo compara con un libro que se llena de información"
+          ],
+          correctAnswer: 1,
+          explanation: "Buzan usaba la analogía del músculo para explicar cómo se puede desarrollar la memoria."
+        },
+        {
+          id: "mem012",
+          question: "¿Qué sugiere el autor sobre la efectividad de las técnicas de memoria al observar a los competidores?",
+          options: [
+            "Que son trucos de feria inútiles",
+            "Que son sorprendentemente efectivas y hacen replantear los límites de la mente",
+            "Que solo funcionan para personas con una memoria excepcional",
+            "Que requieren un talento innato especial"
+          ],
+          correctAnswer: 1,
+          explanation: "El autor queda impresionado por la efectividad de estas técnicas."
+        },
+        {
+          id: "mem013",
+          question: "¿Cuánto tiempo sugiere Buzan que se necesita practicar al día para aspirar a estar entre los tres primeros del campeonato norteamericano?",
+          options: [
+            "15 minutos",
+            "30 minutos",
+            "1 hora",
+            "2 horas"
+          ],
+          correctAnswer: 2,
+          explanation: "Buzan menciona que con una hora diaria de práctica se pueden lograr resultados sorprendentes."
+        },
+        {
+          id: "mem014",
+          question: "¿Qué título del libro que Ed Cooke planeaba escribir se menciona en el texto?",
+          options: [
+            "El arte de la memoria",
+            "El arte de la introspección",
+            "Cómo ser un genio",
+            "Los secretos del cerebro"
+          ],
+          correctAnswer: 1,
+          explanation: "Ed Cooke planeaba escribir un libro titulado 'El arte de la introspección'."
+        },
+        {
+          id: "mem015",
+          question: "¿Qué disciplina estudió Ed Cooke en Oxford?",
+          options: [
+            "Matemáticas y física",
+            "Psicología y filosofía",
+            "Literatura e historia",
+            "Medicina y biología"
+          ],
+          correctAnswer: 1,
+          explanation: "Ed Cooke combinó sus estudios de psicología y filosofía con su interés por la memoria."
+        },
+        {
+          id: "mem016",
+          question: "¿Cuál era la idea de negocio que Ed Cooke y Lukas Amsüss querían emprender?",
+          options: [
+            "Una escuela de magia",
+            "Un gimnasio de memoria llamado Oxford Mind Academy",
+            "Una empresa de tecnología",
+            "Una agencia de detectives"
+          ],
+          correctAnswer: 1,
+          explanation: "Planeaban crear un centro para entrenamiento mental llamado Oxford Mind Academy."
+        },
+        {
+          id: "mem017",
+          question: "¿Qué inquietud principal experimentó el autor al observar el campeonato de memoria?",
+          options: [
+            "No entender las reglas del concurso",
+            "Dudar de su propia capacidad de memoria",
+            "Sentir envidia de los competidores",
+            "Querer participar él mismo"
+          ],
+          correctAnswer: 1,
+          explanation: "El autor comenzó a cuestionar su propia capacidad de memoria al ver lo que lograban los competidores."
+        },
+        {
+          id: "mem018",
+          question: "¿Qué lección clave aprendió el autor sobre la memoria de Ed Cooke?",
+          options: [
+            "Que Ed tenía una memoria fotográfica",
+            "Que incluso una memoria mediocre es poderosa si se usa adecuadamente",
+            "Que la memoria mejora con la edad",
+            "Que la memoria es un don innato"
+          ],
+          correctAnswer: 1,
+          explanation: "El autor comprendió que el potencial de la memoria no depende de capacidades innatas."
+        },
+        {
+          id: "mem019",
+          question: "¿Qué se dice sobre la memoria de los participantes en el campeonato?",
+          options: [
+            "Que todos tienen una memoria fotográfica.",
+            "Que su memoria es mediocre pero usada de manera adecuada es poderosa.",
+            "Que solo los genios pueden competir en estos eventos.",
+            "Que usan trucos de feria para impresionar."
+          ],
+          correctAnswer: 1,
+          explanation: "El texto enfatiza que es el uso adecuado de técnicas lo que hace la diferencia, no capacidades innatas."
+        },
+        {
+          id: "mem020",
+          question: "¿Qué opina Tony Buzan sobre el sistema educativo tradicional y la enseñanza de la memoria?",
+          options: [
+            "Que los colegios enseñan muy bien a memorizar.",
+            "Que memorizar es malo y corrompe la educación.",
+            "Que los colegios no enseñan a retener la información eficazmente y critican la memorización.",
+            "Que el sistema educativo actual es perfecto."
+          ],
+          correctAnswer: 2,
+          explanation: "Buzan critica que el sistema educativo no enseña técnicas efectivas de memorización."
+        }
+      ]
+    };
+
+    new Vue({
+      el: '#app',
+      data: {
+        appState: 'category',
+        categories: [
+          { id: 'memory', name: 'Técnicas de Memoria' }
+        ],
+        selectedCategory: null,
+        questionBank: QuestionBank,
+        currentQuestionIndex: 0,
+        selectedAnswer: null,
+        isCorrect: false,
+        isFlipped: false,
+        correctCount: 0,
+        answeredQuestions: {},
+        shuffledQuestionIds: []
+      },
+      computed: {
+        filteredQuestions() {
+          return this.selectedCategory ? this.questionBank[this.selectedCategory] : [];
+        },
+        currentQuestion() {
+          if (!this.filteredQuestions.length) return null;
+          const questionId = this.shuffledQuestionIds[this.currentQuestionIndex];
+          return this.filteredQuestions.find(q => q.id === questionId) || this.filteredQuestions[0];
+        },
+        feedbackText() {
+          if (this.selectedAnswer === null) return '';
+          return this.isCorrect ? '¡Correcto!' : '¡Incorrecto!';
+        },
+        correctOption() {
+          if (!this.currentQuestion) return '';
+          return this.currentQuestion.options[this.currentQuestion.correctAnswer];
+        },
+        progressPercentage() {
+          return ((this.currentQuestionIndex + 1) / this.filteredQuestions.length) * 100;
+        },
+        isLastQuestion() {
+          return this.currentQuestionIndex === this.filteredQuestions.length - 1;
+        }
+      },
+      methods: {
+        selectCategory(categoryId) {
+          this.selectedCategory = categoryId;
+        },
+        startQuiz() {
+          if (this.selectedCategory) {
+            this.shuffleQuestions();
+            this.resetQuizState();
+            this.appState = 'quiz';
+          }
+        },
+        shuffleQuestions() {
+          this.shuffledQuestionIds = this.filteredQuestions.map(q => q.id);
+          for (let i = this.shuffledQuestionIds.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.shuffledQuestionIds[i], this.shuffledQuestionIds[j]] = 
+            [this.shuffledQuestionIds[j], this.shuffledQuestionIds[i]];
+          }
+        },
+        selectAnswer(index) {
+          if (this.selectedAnswer === null) {
+            this.selectedAnswer = index;
+            this.isCorrect = index === this.currentQuestion.correctAnswer;
+            
+            this.answeredQuestions[this.currentQuestion.id] = {
+              isCorrect: this.isCorrect,
+              selectedOption: index
+            };
+            
+            if (this.isCorrect) {
+              this.correctCount++;
+            }
+            
+            this.isFlipped = true;
+          }
+        },
+        nextQuestion() {
+          if (this.selectedAnswer !== null) {
+            this.currentQuestionIndex++;
+            this.selectedAnswer = null;
+            this.isCorrect = false;
+            this.isFlipped = false;
+          }
+        },
+        finishQuiz() {
+          if (this.selectedAnswer !== null) {
+            this.appState = 'results';
+          }
+        },
+        resetQuizState() {
+          this.currentQuestionIndex = 0;
+          this.selectedAnswer = null;
+          this.isCorrect = false;
+          this.isFlipped = false;
+          this.correctCount = 0;
+          this.answeredQuestions = {};
+        },
+        resetQuiz() {
+          this.resetQuizState();
+          this.shuffleQuestions();
+          this.appState = 'quiz';
+        },
+        resetToCategories() {
+          this.resetQuizState();
+          this.selectedCategory = null;
+          this.appState = 'category';
+        }
+      }
+    });
+  </script>
+</body>
+</html>
